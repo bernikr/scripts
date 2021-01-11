@@ -1,10 +1,11 @@
+from datetime import datetime
 from operator import itemgetter
 
-import n26.config
 import n26.api
+import n26.config
+
 from firefly_api import FireflyAPI
 from settings import *
-from datetime import date, datetime, timedelta
 
 n26_conf = n26.config.Config(validate=False)
 n26_conf.USERNAME.value = N26_USERNAME
@@ -17,7 +18,7 @@ n26_conf.validate()
 
 def map_transaction(t, category_map):
     transaction = {
-        'date': datetime.fromtimestamp(t['visibleTS']/1000).date().isoformat(),
+        'date': datetime.fromtimestamp(t['visibleTS']/1000).isoformat(),
         'amount': abs(t['amount']),
         'notes': t.get('referenceText', ''),
         'tags': ['n26 autoimport'],
