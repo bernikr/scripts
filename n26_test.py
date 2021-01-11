@@ -51,13 +51,13 @@ def import_transactions():
     firefly_api = FireflyAPI(FIREFLY_URL, FIREFLY_TOKEN)
 
     print("get last transactions in Firefly")
-    last_registered_transactions = firefly_api.get_account_transactions(FIREFLY_N26_ACCOUNT_ID, limit=20)
-    last_registered_transactions = list(map(lambda x: x['attributes']['transactions'][0], last_registered_transactions))
-    saved_ids = list(filter(lambda x: x is not None, map(itemgetter('internal_reference'), last_registered_transactions)))
-    last_day = max(map(lambda x: datetime.fromisoformat(x['date']), last_registered_transactions))
+    last_firefly_transactions = firefly_api.get_account_transactions(FIREFLY_N26_ACCOUNT_ID, limit=20)
+    last_firefly_transactions = list(map(lambda x: x['attributes']['transactions'][0], last_firefly_transactions))
+    saved_ids = list(filter(lambda x: x is not None, map(itemgetter('internal_reference'), last_firefly_transactions)))
+    first_timestamp = min(map(lambda x: datetime.fromisoformat(x['date']), last_firefly_transactions))
 
     print("get latest transactions from n26")
-    new_transactions = n26_api.get_transactions(from_time=int(last_day.timestamp()*1000),
+    new_transactions = n26_api.get_transactions(from_time=int(first_timestamp.timestamp()*1000),
                                                 to_time=int(datetime.now().timestamp()*1000))
     print("get category names from n26")
     category_map = {c['id']: c['name'] for c in n26_api.get_available_categories()}
