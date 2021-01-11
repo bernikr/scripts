@@ -41,24 +41,31 @@ def map_transaction(t, category_map):
         transaction['destination_id'] = FIREFLY_N26_ACCOUNT_ID
         transaction['source_name'] = t.get('merchantName', t.get('partnerName', ''))
         transaction['source_iban'] = t.get('partnerIban', None)
-        transaction['source_name'] = transaction['destination_name']
+        transaction['description'] = transaction['source_name']
     return transaction
 
 
-if __name__ == '__main__':
+def import_transactions():
     n26_api = n26.api.Api(n26_conf)
     firefly_api = FireflyAPI(FIREFLY_URL, FIREFLY_TOKEN)
 
+    print("get last transactions in Firefly")
     last_registered_transactions = firefly_api.get_account_transactions(FIREFLY_N26_ACCOUNT_ID, limit=20)
     last_registered_transactions = list(map(lambda x: x['attributes']['transactions'][0], last_registered_transactions))
     saved_ids = list(filter(lambda x: x is not None, map(itemgetter('internal_reference'), last_registered_transactions)))
     last_day = max(map(lambda x: datetime.fromisoformat(x['date']), last_registered_transactions))
 
+    print("get latest transactions from n26")
     new_transactions = n26_api.get_transactions(from_time=int(last_day.timestamp()*1000),
                                                 to_time=int(datetime.now().timestamp()*1000))
+    print("get category names from n26")
     category_map = {c['id']: c['name'] for c in n26_api.get_available_categories()}
+
     for t in filter(lambda x: x['id'] not in saved_ids and not x['pending'], new_transactions):
+        print("create new tranaction in firefly")
         t = map_transaction(t, category_map)
         firefly_api.create_transaction(t)
-    print()
-    # print(n26_api.get_transactions())
+
+
+if __name__ == '__main__':
+    import_transactions()
