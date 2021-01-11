@@ -1,7 +1,7 @@
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv as _load_dotenv
 
-load_dotenv()
+_load_dotenv()
 
 N26_USERNAME = os.getenv('N26_USERNAME')
 N26_PASSWORD = os.getenv('N26_PASSWORD')
