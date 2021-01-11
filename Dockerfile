@@ -6,4 +6,4 @@ COPY * ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD [ "python", "/app/bot.py", "-l" ]
+CMD [ "python", "/app/main.py", "-l" ]
