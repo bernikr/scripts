@@ -1,3 +1,6 @@
+import re
+import sys
+import time
 from datetime import datetime
 from operator import itemgetter
 
@@ -69,4 +72,9 @@ def import_transactions():
 
 
 if __name__ == '__main__':
-    import_transactions()
+    if '-l' not in sys.argv[1:]:
+        import_transactions()
+    else:
+        while True:
+            import_transactions()
+            time.sleep(LOOP_MINUTES * 60)
