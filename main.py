@@ -73,7 +73,7 @@ def import_transactions():
         firefly_api.create_transaction(t)
 
 
-@app.route('/')
+@app.route('/import')
 def trigger_import():
     import_transactions()
     return 'Import finished!'
