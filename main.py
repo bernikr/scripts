@@ -5,9 +5,12 @@ from operator import itemgetter
 
 import n26.api
 import n26.config
+from flask import Flask
 
 from firefly_api import FireflyAPI
 from settings import *
+
+app = Flask(__name__)
 
 n26_conf = n26.config.Config(validate=False)
 n26_conf.USERNAME.value = N26_USERNAME
@@ -68,6 +71,12 @@ def import_transactions():
         print("create new tranaction in firefly")
         t = map_transaction(t, category_map)
         firefly_api.create_transaction(t)
+
+
+@app.route('/')
+def trigger_import():
+    import_transactions()
+    return 'Import finished!'
 
 
 if __name__ == '__main__':

@@ -1,3 +1,5 @@
-requests==2.23.0
-n26==3.2.1
-python-dotenv==0.10.3
+requests==2.23.*
+n26==3.2.*
+python-dotenv==0.10.*
+gunicorn==20.0.*
+flask==1.1.*
