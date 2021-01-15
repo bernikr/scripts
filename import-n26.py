@@ -57,7 +57,7 @@ def map_transaction(t, category_map, ibans):
     return transaction
 
 
-def import_transactions():
+if __name__ == '__main__':
     n26_api = n26.api.Api(n26_conf)
     firefly_api = FireflyAPI(FIREFLY_URL, FIREFLY_TOKEN)
 
@@ -82,7 +82,3 @@ def import_transactions():
         print("create new tranaction in firefly")
         t = map_transaction(t, category_map, ibans)
         firefly_api.create_transaction(t)
-
-
-if __name__ == '__main__':
-    import_transactions()
