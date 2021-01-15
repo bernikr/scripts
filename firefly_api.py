@@ -63,3 +63,9 @@ class FireflyAPI:
 
     def create_transaction(self, transaction):
         return self._request('transactions', method=POST, data={'transactions': [transaction]})
+
+    def get_accounts(self, type=None):
+        args = {}
+        if type is not None:
+            args['type'] = type
+        return self._request('accounts', args=args)

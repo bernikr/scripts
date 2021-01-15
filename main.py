@@ -21,7 +21,9 @@ n26_conf.DEVICE_TOKEN.value = N26_DEVICE_TOKEN
 n26_conf.validate()
 
 
-def map_transaction(t, category_map):
+def map_transaction(t, category_map, ibans):
+    if ibans is None:
+        ibans = dict()
     transaction = {
         'date': datetime.fromtimestamp(t['visibleTS']/1000).isoformat(),
         'amount': abs(t['amount']),
@@ -29,7 +31,16 @@ def map_transaction(t, category_map):
         'tags': ['n26 autoimport'],
         'internal_reference': t['id']
     }
-    if FIREFLY_CASH_ACCOUNT_ID != -1 and t['category'] == 'micro-v2-atm':
+    if 'partnerIban' in t and t['partnerIban'] in ibans:
+        transaction['type'] = 'transfer'
+        if t['amount'] < 0:
+            transaction['source_id'] = FIREFLY_N26_ACCOUNT_ID
+            transaction['destination_id'] = ibans[t['partnerIban']]
+        else:
+            transaction['destination_id'] = FIREFLY_N26_ACCOUNT_ID
+            transaction['source_id'] = ibans[t['partnerIban']]
+        transaction['description'] = 'Transfer'
+    elif FIREFLY_CASH_ACCOUNT_ID != -1 and t['category'] == 'micro-v2-atm':
         transaction['type'] = 'transfer'
         transaction['source_id'] = FIREFLY_N26_ACCOUNT_ID
         transaction['destination_id'] = FIREFLY_CASH_ACCOUNT_ID
@@ -61,6 +72,11 @@ def import_transactions():
     saved_ids = list(filter(lambda x: x is not None, map(itemgetter('internal_reference'), last_firefly_transactions)))
     first_timestamp = min(map(lambda x: datetime.fromisoformat(x['date']), last_firefly_transactions))
 
+    print("get accounts in Firefly")
+    accounts = firefly_api.get_accounts(type="asset")
+    ibans = {a['attributes']['iban'].replace(' ', ''): a['id']
+             for a in accounts if a['attributes']['iban'] is not None}
+
     print("get latest transactions from n26")
     new_transactions = n26_api.get_transactions(from_time=int(first_timestamp.timestamp()*1000),
                                                 to_time=int(datetime.now().timestamp()*1000))
@@ -69,7 +85,7 @@ def import_transactions():
 
     for t in filter(lambda x: x['id'] not in saved_ids and not x['pending'], new_transactions):
         print("create new tranaction in firefly")
-        t = map_transaction(t, category_map)
+        t = map_transaction(t, category_map, ibans)
         firefly_api.create_transaction(t)
 
 
