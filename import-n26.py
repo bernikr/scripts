@@ -20,11 +20,10 @@ def map_transaction(t, category_map, ibans):
     if ibans is None:
         ibans = dict()
     transaction = {
-        'date': datetime.fromtimestamp(t['visibleTS']/1000).isoformat(),
+        'date': datetime.fromtimestamp(t['visibleTS'] // 1000).isoformat(),
         'amount': abs(t['amount']),
         'notes': t.get('referenceText', ''),
-        'tags': ['n26 autoimport'],
-        'internal_reference': t['id']
+        'tags': ['n26 autoimport']
     }
     if 'partnerIban' in t and t['partnerIban'] in ibans:
         transaction['type'] = 'transfer'
@@ -64,7 +63,6 @@ if __name__ == '__main__':
     print("get last transactions in Firefly")
     last_firefly_transactions = firefly_api.get_account_transactions(FIREFLY_N26_ACCOUNT_ID, limit=20)
     last_firefly_transactions = list(map(lambda x: x['attributes']['transactions'][0], last_firefly_transactions))
-    saved_ids = list(filter(lambda x: x is not None, map(itemgetter('internal_reference'), last_firefly_transactions)))
     first_timestamp = min(map(lambda x: datetime.fromisoformat(x['date']), last_firefly_transactions))
 
     print("get accounts in Firefly")
@@ -73,12 +71,28 @@ if __name__ == '__main__':
              for a in accounts if a['attributes']['iban'] is not None}
 
     print("get latest transactions from n26")
-    new_transactions = n26_api.get_transactions(from_time=int(first_timestamp.timestamp()*1000),
-                                                to_time=int(datetime.now().timestamp()*1000))
+    new_transactions = n26_api.get_transactions(from_time=int(first_timestamp.timestamp() * 1000),
+                                                to_time=int(datetime.now().timestamp() * 1000))
     print("get category names from n26")
     category_map = {c['id']: c['name'] for c in n26_api.get_available_categories()}
 
-    for t in filter(lambda x: x['id'] not in saved_ids and not x['pending'], new_transactions):
+
+    def is_same_transaction(n26_t, firefly_t):
+        # Match Transactions based on amount and time, since the id in n26 changes a few days after the transaction
+        if abs(n26_t['amount']) != float(firefly_t['amount']):
+            return False
+        n26_time = datetime.fromtimestamp(n26_t['visibleTS'] // 1000)
+        firefly_time = datetime.fromisoformat(firefly_t['date']).replace(tzinfo=None)
+        if 'n26 autoimport' in firefly_t['tags']:
+            # if autoimported match by exact time
+            # allow hours to be different, since n26 changes the timezone a few days after the transaction
+            time_difference = abs((n26_time - firefly_time).total_seconds())
+            return time_difference <= 60*60*24 and time_difference % (60*60) == 0
+        else:
+            # if it is a manual entry just check the date (not the time), prevents double entries on first run
+            return n26_time.date() == firefly_time.date()
+
+    for t in filter(lambda t: not any(is_same_transaction(t, x) for x in last_firefly_transactions), new_transactions):
         print("create new tranaction in firefly")
         t = map_transaction(t, category_map, ibans)
         firefly_api.create_transaction(t)
